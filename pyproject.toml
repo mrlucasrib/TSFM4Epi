@@ -1,0 +1,12 @@
+[project]
+name = "ribeiro2025"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "tsfm-public",
+]
+
+[tool.uv.sources]
+tsfm-public = { git = "https://github.com/ibm-granite/granite-tsfm.git", rev = "v0.2.16" }
