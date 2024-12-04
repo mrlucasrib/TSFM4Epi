@@ -1,12 +1,16 @@
-[project]
+[tool.poetry]
 name = "ribeiro2025"
 version = "0.1.0"
-description = "Add your description here"
+description = ""
+authors = ["Lucas Ribeiro"]
 readme = "README.md"
-requires-python = ">=3.9"
-dependencies = [
-    "tsfm-public",
-]
 
-[tool.uv.sources]
-tsfm-public = { git = "https://github.com/ibm-granite/granite-tsfm.git", rev = "v0.2.16" }
+[tool.poetry.dependencies]
+python = "==3.10.12"
+tsfm-public = {git = "https://github.com/ibm-granite/granite-tsfm.git", rev = "v0.2.16"}
+timesfm = "1.2.3"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
