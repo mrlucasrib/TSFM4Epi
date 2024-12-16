@@ -32,18 +32,20 @@ class MLExperimentFacade:
         experiment_name: str,
         artifacts_path: str,
         prediction_length: int,
-        context_lenght: int,
+        context_length: int,
         splitter: AbstractBaseSplitter | None = None,
     ):
         self.experiment_name = experiment_name
         self.artifacts_path = artifacts_path
-        self.context_lenght = context_lenght
+        self.context_length = context_length
         self.splitter = splitter or TSFMExperimentSplitter(
-            context_length=context_lenght
+            context_length=context_length
         )
         self.prediction_length = prediction_length
         if (exp := mlflow.get_experiment_by_name(self.experiment_name)) is None:
-            self.experiment_id = mlflow.create_experiment(self.experiment_name, artifact_location=self.artifacts_path)
+            self.experiment_id = mlflow.create_experiment(
+                self.experiment_name, artifact_location=self.artifacts_path
+            )
         else:
             self.experiment_id: str = exp.experiment_id
 
@@ -122,7 +124,9 @@ class MLExperimentFacade:
         start_time = time.time()
         forecast = list(forecast_it)
         end_time = time.time()
-        logging.info(f"Time taken to transform to list of size {len(forecast)}: {end_time - start_time} seconds")
+        logging.info(
+            f"Time taken to transform to list of size {len(forecast)}: {end_time - start_time} seconds"
+        )
         mlflow.log_metric("time_to_transform_forecast", end_time - start_time)
         mlflow.log_metric("forecast_size", len(forecast))
 

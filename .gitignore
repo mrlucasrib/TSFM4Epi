@@ -163,3 +163,7 @@ cython_debug/
 
 # Sinan
 **/data/
+
+**/mlflow
+**/mlruns
+**/artifacts
