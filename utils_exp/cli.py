@@ -1,7 +1,18 @@
 import argparse
 
+class Args(argparse.Namespace):
+    experiment_name: str
+    artifacts_path: str
+    prediction_length: int
+    context_length: int
+    ckpt_path: str
+    model_name: str
+    data_path: str
+    num_samples: int
+    model_size: str
 
-def get_parser():
+    
+def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run experiment")
     parser.add_argument(
         "--experiment_name", type=str, required=True, help="Name of the experiment"
@@ -29,7 +40,12 @@ def get_parser():
     parser.add_argument(
         "--num_samples", type=int, default=100, help="Number of samples"
     )
-
+    parser.add_argument(
+    "--model_size",
+    type=str,
+    default="small",
+    help="Model size",
+    )
     return parser
 
 
