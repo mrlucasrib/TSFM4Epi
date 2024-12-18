@@ -1,84 +1,113 @@
-from __future__ import annotations
+# Get predictor from https://github.com/abdulfatir/gift-eval/blob/9ad8d03e3292ecd869e23c03d6f285ed9ffa5370/notebooks/chronos.ipynb
+# with minor modifications
+import logging
+from dataclasses import dataclass, field
 
-from typing import TYPE_CHECKING
+import numpy as np
+import torch
+from chronos import BaseChronosPipeline, ForecastType
+from gluonts.itertools import batcher
+from gluonts.model import Forecast
+from gluonts.model.forecast import QuantileForecast, SampleForecast
+from tqdm.auto import tqdm
 
-import mlflow
-from autogluon.timeseries import TimeSeriesDataFrame, TimeSeriesPredictor
-from datasets import load_dataset
-from sklearn.metrics import mean_absolute_error, root_mean_squared_error
+from utils_exp import Args, MLExperimentFacade, get_parser
 
-if TYPE_CHECKING:
-    from datasets import Dataset
-    from pandas import DataFrame
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__package__)
 
-class ChronosExperiment:
-    def __init__(self, config):
-        self.config = config
+class ChronosPredictor:
+    def __init__(
+        self,
+        model_path,
+        num_samples: int,
+        prediction_length: int,
+        *args,
+        **kwargs,
+    ):
+        self.pipeline = BaseChronosPipeline.from_pretrained(
+            model_path,
+            *args,
+            **kwargs,
+        )
+        self.prediction_length = prediction_length
+        self.num_samples = num_samples
 
-    def run(self):
-        with mlflow.start_run(run_name=self.__class__.__name__):
-            print("Running Chronos experiment with config:", self.config)
-            train_df, test_df = self._prepare_data()
-            train_data = TimeSeriesDataFrame.from_data_frame(
-                train_df,
-                id_column="item_id",
-                timestamp_column="timestamp"
-            )
-            train_data.head()
-            predictor = TimeSeriesPredictor(prediction_length=100).fit(
-                train_data, presets="bolt_small",
-            )
-            predictions = predictor.predict(train_data)
-            df_pred = predictions.to_data_frame().reset_index()
-            print(df_pred.head())
-            # predictor.plot(
-            #     data=train_data,
-            #     predictions=predictions,
-            #     item_ids=train_data.item_ids[:2],
-            #     max_history_length=200,
-            # )
-            metrics = self.evaluate(df_pred, test_df)
-            for disease, disease_metrics in metrics.items():
-                for metric_name, metric_value in disease_metrics.items():
-                    mlflow.log_metric(f"{disease}_{metric_name}", metric_value)
+    def predict(
+        self, test_data_input, batch_size: int = 1024, **kwargs
+    ) -> list[Forecast]:
+        pipeline = self.pipeline
+        predict_kwargs = (
+            {"num_samples": self.num_samples}
+            if pipeline.forecast_type == ForecastType.SAMPLES
+            else {}
+        )
+        while True:
+            try:
+                # Generate forecast samples
+                forecast_outputs = []
+                for batch in tqdm(batcher(test_data_input, batch_size=batch_size)):
+                    context = [torch.tensor(entry["target"]) for entry in batch]
+                    forecast_outputs.append(
+                        pipeline.predict(
+                            context,
+                            prediction_length=self.prediction_length,
+                            **predict_kwargs,
+                        ).numpy()
+                    )
+                forecast_outputs = np.concatenate(forecast_outputs)
+                break
+            except torch.cuda.OutOfMemoryError:
+                print(
+                    f"OutOfMemoryError at batch_size {batch_size}, reducing to {batch_size // 2}"
+                )
+                batch_size //= 2
 
-    
-    def _prepare_data(self) -> DataFrame:
-        train_path = "data/sinan/newdata/ANIMBR_municipality_M_train.parquet"
-        test_path = "data/sinan/newdata/ANIMBR_municipality_M_test.parquet"
-        disease_dataset = load_dataset("parquet", data_files={"train": train_path, "test": test_path})
-        df_train = disease_dataset["train"].to_pandas()
-        df_test = disease_dataset["test"].to_pandas()
-        df_train.rename(columns={"y": "target", "unique_id": "item_id", "ds": "timestamp"}, inplace=True)
-        df_test.rename(columns={"y": "target", "unique_id": "item_id", "ds": "timestamp"}, inplace=True)
-        return df_train, df_test
+        # Convert forecast samples into gluonts Forecast objects
+        forecasts = []
+        for item, ts in zip(forecast_outputs, test_data_input):
+            forecast_start_date = ts["start"] + len(ts["target"])
 
-    def evaluate(self, df, df_test) -> dict:
-        merged_df = df_test.merge(df[['item_id', 'timestamp', 'mean']], on=['item_id', 'timestamp'], how='inner')
-        
-        # Calculate error metrics for each disease
-        metrics = {}
-        for disease in merged_df['item_id'].unique():
-            disease_df = merged_df[merged_df['item_id'] == disease]
-            rmse = root_mean_squared_error(disease_df['target'], disease_df['mean'])
-            mae = mean_absolute_error(disease_df['target'], disease_df['mean'])
-            mape = (abs((disease_df['target'] - disease_df['mean']) / disease_df['target'])).mean() * 100
-            smape = (abs(disease_df['target'] - disease_df['mean']) / ((abs(disease_df['target']) + abs(disease_df['mean'])) / 2)).mean() * 100
+            if pipeline.forecast_type == ForecastType.SAMPLES:
+                forecasts.append(
+                    SampleForecast(samples=item, start_date=forecast_start_date)
+                )
+            elif pipeline.forecast_type == ForecastType.QUANTILES:
+                forecasts.append(
+                    QuantileForecast(
+                        forecast_arrays=item,
+                        forecast_keys=list(map(str, pipeline.quantiles)),
+                        start_date=forecast_start_date,
+                    )
+                )
 
-            metrics[disease] = {
-                "rmse": rmse,
-                "mae": mae,
-                "mape": mape,
-                "smape": smape,
-            }
+        return forecasts
 
-            metrics['all'] = {
-                "rmse": root_mean_squared_error(merged_df['target'], merged_df['mean']),
-                "mae": mean_absolute_error(merged_df['target'], merged_df['mean']),
-                "mape": (abs((merged_df['target'] - merged_df['mean']) / merged_df['target'])).mean() * 100,
-                "smape": (abs(merged_df['target'] - merged_df['mean']) / ((abs(merged_df['target']) + abs(merged_df['mean'])) / 2)).mean() * 100,
-            }
 
-        return metrics
+def main():
+    logger.info("Initializing experiment")
+    parser = get_parser()
+    args = parser.parse_args(namespace=Args)
+
+    chronos_predictor = ChronosPredictor(
+        model_path=args.model_path,
+        prediction_length=args.prediction_length,
+        num_samples=args.num_samples,
+        device_map="cuda:0",
+    )
+    exp = MLExperimentFacade(
+        experiment_name=args.experiment_name,
+        artifacts_path=args.artifacts_path,
+        prediction_length=args.prediction_length,
+        context_length=args.context_length,
+    )
+    exp.run_experiment(
+        model_name=args.model_name,
+        dataset_path=args.data_path,
+        predictor=chronos_predictor,
+        num_samples=args.num_samples,
+    )
+
+
 if __name__ == "__main__":
-    ChronosExperiment(config={}).run()
+    main()

@@ -1,4 +1,4 @@
 chronos-forecasting
+gluonts
 mlflow
-datasets
-autogluon
+tqdm
