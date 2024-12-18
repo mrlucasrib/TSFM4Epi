@@ -4,8 +4,10 @@ This file is used to create a dummy module hierarchy for the `gluonts.torch.modu
 It is used in official Lag-llama notebook code because an error in `torch.load`.
 https://colab.research.google.com/drive/1DRAzLUPxsd-0r8b-o4nlyFXrjw_ZajJJ?usp=sharing#scrollTo=BSNBysopSbXE
 """
+
 import sys
 from types import ModuleType
+
 
 # Create dummy module hierarchy
 def create_dummy_module(module_path):
@@ -14,12 +16,12 @@ def create_dummy_module(module_path):
 
     Returns the leaf module.
     """
-    parts = module_path.split('.')
-    current = ''
+    parts = module_path.split(".")
+    current = ""
     parent = None
 
     for part in parts:
-        current = current + '.' + part if current else part
+        current = current + "." + part if current else part
         if current not in sys.modules:
             module = ModuleType(current)
             sys.modules[current] = module
@@ -28,6 +30,7 @@ def create_dummy_module(module_path):
         parent = current
 
     return sys.modules[module_path]
+
 
 # Create dummy classes for the specific loss functions
 class DistributionLoss:
@@ -40,6 +43,7 @@ class DistributionLoss:
     def __getattr__(self, name):
         return lambda *args, **kwargs: None
 
+
 class NegativeLogLikelihood:
     def __init__(self, *args, **kwargs):
         pass
@@ -50,9 +54,10 @@ class NegativeLogLikelihood:
     def __getattr__(self, name):
         return lambda *args, **kwargs: None
 
+
 def create_dummy_gluonts_torch_module():
     # Create the dummy gluonts module hierarchy
-    gluonts_module = create_dummy_module('gluonts.torch.modules.loss')
+    gluonts_module = create_dummy_module("gluonts.torch.modules.loss")
     # Add the specific classes to the module
     gluonts_module.DistributionLoss = DistributionLoss
     gluonts_module.NegativeLogLikelihood = NegativeLogLikelihood

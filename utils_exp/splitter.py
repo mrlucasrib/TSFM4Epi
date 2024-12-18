@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
@@ -8,7 +9,10 @@ from gluonts.dataset.split import AbstractBaseSplitter, slice_data_entry
 
 if TYPE_CHECKING:
     from collections.abc import Generator
+
     from gluonts.dataset.common import DataEntry, Dataset
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -76,7 +80,7 @@ class TSFMExperimentSplitter(AbstractBaseSplitter):
         """
         if distance is None:
             distance = self.context_length
-
+        splits_num = 0
         for entry in dataset:
             total_length = entry[FieldName.TARGET].shape[-1]
             current_offset = self.context_length
@@ -86,3 +90,7 @@ class TSFMExperimentSplitter(AbstractBaseSplitter):
                 )
                 yield test[0], test[1]
                 current_offset += distance
+                splits_num += 1
+        logger.info(f"Generated {splits_num} test pairs")
+        if splits_num == 0:
+            raise ValueError("No test pairs were generated")

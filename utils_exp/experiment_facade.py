@@ -10,7 +10,6 @@ import pandas as pd
 from gluonts.dataset.pandas import PandasDataset
 from gluonts.evaluation import Evaluator
 from gluonts.evaluation.backtest import _to_dataframe
-from numpy.core.umath import arange
 
 from utils_exp.splitter import TSFMExperimentSplitter
 
@@ -24,6 +23,8 @@ if TYPE_CHECKING:
     from pandas import DataFrame
 
 import time
+
+logger = logging.getLogger(__name__)
 
 
 class MLExperimentFacade:
@@ -53,7 +54,7 @@ class MLExperimentFacade:
         self, model_name: str, dataset_path, predictor: Predictor, num_samples: int
     ) -> None:
         mlflow.start_run(run_name=model_name, experiment_id=self.experiment_id)
-        logging.info(f"Starting experiment {model_name}")
+        logger.info(f"Starting experiment {model_name}")
         mlflow.log_params(self.__dict__)
         mlflow.log_params(
             {
@@ -64,16 +65,16 @@ class MLExperimentFacade:
         )
 
         data = self.get_data(dataset_path)
-        logging.info(f"Data loaded from {dataset_path}")
+        logger.info(f"Data loaded from {dataset_path}")
 
         agg_metrics, item_metrics = self.backtest_metrics(
             data, predictor, num_samples=num_samples
         )
-        logging.info(f"Metrics calculated")
+        logger.info(f"Metrics calculated")
         for metric_name, metric_value in agg_metrics.items():
             sanitized_metric_name = metric_name.replace("[", "_").replace("]", "_")
             mlflow.log_metric(sanitized_metric_name, metric_value)
-        logging.info(f"Metrics logged")
+        logger.info(f"Metrics logged")
 
         item_metrics_path = f"{self.artifacts_path}/item_metrics.csv"
         item_metrics.to_csv(item_metrics_path, index=False)
@@ -124,7 +125,7 @@ class MLExperimentFacade:
         start_time = time.time()
         forecast = list(forecast_it)
         end_time = time.time()
-        logging.info(
+        logger.info(
             f"Time taken to transform to list of size {len(forecast)}: {end_time - start_time} seconds"
         )
         mlflow.log_metric("time_to_transform_forecast", end_time - start_time)

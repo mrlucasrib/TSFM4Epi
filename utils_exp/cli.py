@@ -1,5 +1,6 @@
 import argparse
 
+
 class Args(argparse.Namespace):
     experiment_name: str
     artifacts_path: str
@@ -11,7 +12,7 @@ class Args(argparse.Namespace):
     num_samples: int
     model_size: str
 
-    
+
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run experiment")
     parser.add_argument(
@@ -41,10 +42,10 @@ def get_parser() -> argparse.ArgumentParser:
         "--num_samples", type=int, default=100, help="Number of samples"
     )
     parser.add_argument(
-    "--model_size",
-    type=str,
-    default="small",
-    help="Model size",
+        "--model_size",
+        type=str,
+        default="small",
+        help="Model size",
     )
     return parser
 
