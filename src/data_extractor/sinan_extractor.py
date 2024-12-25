@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 import pandas as pd
 from pysus.ftp.databases.sinan import SINAN
-
+import numpy as np
 if TYPE_CHECKING:
     from pysus.data.local import ParquetSet
     from typing import Literal
@@ -22,50 +22,49 @@ ERRORS = []
 DEFAULT_PATH = "data"
 
 SELECTED_DISEASES = [
-    # "BOTU",
-    # "CHAG",
-    # "CHIK",
-    # "COLE",
-    # "COQU",
-    # "DERM",
-    # "DIFT",
-    # "ESQU",
-    # "EXAN",
-    # "FMAC",
-    # "FTIF",
-    # "HANS",
+    "BOTU",
+    "CHAG",
+    "CHIK",
+    "COLE",
+    "COQU",
+    "DERM",
+    "DIFT",
+    "ESQU",
+    "EXAN",
+    "FMAC",
+    "FTIF",
+    "HANS",
     "HANT",
-    # "HEPA",
-    # "INFL",
-    # "LEIV",
-    # "LEPT",
-    # "LERD",
+    "HEPA",
+    "INFL",
+    "LEIV",
+    "LEPT",
+    "LERD",
     "LTAN",
-    # "MALA",
-    # "MENI",
-    # "NTRA",
-    # "PEST",
-    # "PFAN",
-    # "PNEU",
-    # "RAIV",
-    # "SDTA",
-    # "SIFA",
-    # "SIFC",
-    # "SIFG",
-    # "SRC",
-    # "TETA",
+    "MALA",
+    "MENI",
+    "NTRA",
+    "PEST",
+    "PFAN",
+    "PNEU",
+    "RAIV",
+    "SDTA",
+    "SIFA",
+    "SIFC",
+    "SIFG",
+    "SRC",
+    "TETA",
     "TETN",
     "TOXC",
-    # "TOXG",
-    # "TRAC",
+    "TOXG",
+    "TRAC",
     "TUBE",
-    # "VARC",
-    # "ZIKA",
+    "VARC",
+    "ZIKA",
+    # "DENG"
 ]
 
-
 class SinanDataExtractor:
-    timestamp_column = "DT_NOTIFIC"
     time_serie_key = "ID_MUNICIP"
 
     def __init__(
@@ -119,18 +118,22 @@ class SinanDataExtractor:
                     try:
                         df: pd.DataFrame = case.to_dataframe()
 
-                        df = df[[self.timestamp_column, self.time_serie_key]]  # type: ignore
                         # Getting State code as the key
                         df[self.time_serie_key] =  pd.to_numeric((
                             df[self.time_serie_key].astype(str, errors="raise").str[:2]
                         ), downcast='unsigned')
                         df = self.treat_edge_cases(df, disease_name, dataset_year)
+                        df = df[[self.time_serie_key, 'ds']] # type: ignore
                         df_merged = pd.concat([df_merged, df], ignore_index=True)
                     except Exception as e:
                         logger.error(
                             f"Failed to load dataset: {disease_name} - {dataset_year}"
                         )
-                        logger.error(f"Error: {e}", exc_info=True)
+                        
+                        if str(e) == "No objects to concatenate":
+                            logger.error(f"Error: {e}")
+                        else:
+                            logger.error(f"Error: {e}", exc_info=True)
                         ERRORS.append((disease_name, dataset_year))
                         continue
 
@@ -138,7 +141,7 @@ class SinanDataExtractor:
                 grouped_df = (
                     df_merged.groupby(
                         [
-                            pd.Grouper(key=self.timestamp_column, freq=self.frequency),
+                            pd.Grouper(key='ds', freq=self.frequency),
                             self.time_serie_key,
                         ]
                     )
@@ -147,12 +150,12 @@ class SinanDataExtractor:
                 )
 
                 grouped_df = self._fill_missing_date(grouped_df).sort_values(
-                    by=[self.time_serie_key, self.timestamp_column]
+                    by=[self.time_serie_key, 'ds']
                 )
 
                 # Check if the two dates are too far apart
-                max_date = grouped_df[self.timestamp_column].max()
-                min_date = grouped_df[self.timestamp_column].min()
+                max_date = grouped_df['ds'].max()
+                min_date = grouped_df['ds'].min()
                 logger.info(
                     f"Max date: {max_date}; Min date: {min_date} of {disease_name}"
                 )
@@ -164,7 +167,6 @@ class SinanDataExtractor:
 
                 grouped_df.rename(
                     columns={
-                        self.timestamp_column: "ds",
                         self.time_serie_key: "unique_id",
                     },
                     inplace=True,
@@ -189,8 +191,7 @@ class SinanDataExtractor:
     def treat_edge_cases(
         self, df: pd.DataFrame, disease_code: str, dataset_year: str
     ) -> pd.DataFrame:
-        inconsistent_indices = self.get_inconsistent_dates(df)
-        return self.fix_inconsistent_dates(df, inconsistent_indices)
+        return self.fix_inconsistent_dates(df)
 
     def _fill_missing_date(self, df: pd.DataFrame) -> pd.DataFrame:
         """Fills missing dates with 0 cases in the provided DataFrame based on the selected frequency.
@@ -203,124 +204,90 @@ class SinanDataExtractor:
         so, in the same way we do not increase the number of cases, we do not decrease it.
         """
         all_dates = pd.date_range(
-            start=df[self.timestamp_column].min(),
-            end=df[self.timestamp_column].max(),
+            start=df['ds'].min(),
+            end=df['ds'].max(),
             freq=self.frequency,
         )
         all_municipalities = df[self.time_serie_key].unique()
 
         idx = pd.MultiIndex.from_product(
             [all_dates, all_municipalities],
-            names=[self.timestamp_column, self.time_serie_key],
+            names=['ds', self.time_serie_key],
         )
 
         return (
-            df.set_index([self.timestamp_column, self.time_serie_key])
+            df.set_index(['ds', self.time_serie_key])
             .reindex(idx, fill_value=0)
             .reset_index()
         )
 
-    def get_inconsistent_dates(self, df: pd.DataFrame) -> set:
-        """
-        Checks for inconsistent dates using vectorized operations and logs indices where dates have more than 5 months gap.
-
-        Parameters:
-            df (pd.DataFrame): The DataFrame containing the date column to be checked.
-        """
-        # Backup date column
-        df[self.timestamp_column + "_backup"] = df[self.timestamp_column]
-        # Convert to datetime and sort
-        df[self.timestamp_column] = pd.to_datetime(
-            df[self.timestamp_column], errors="coerce"
-        )
-
-        # Calculate date differences
-        date_diffs = abs(df[self.timestamp_column].diff())
-        next_date_diffs = abs(df[self.timestamp_column].diff(-1))
-
-        # Find indices where gaps are > 12 months (365 days)
-        prev_gaps = (date_diffs > pd.Timedelta(days=365))
-        next_gaps = (next_date_diffs > pd.Timedelta(days=365))
-        conversion_errors = df[self.timestamp_column].isna()
-        prev_gaps.iloc[0] = False
-        next_gaps.iloc[-1] = False
-        inconsistent_indices = set(df.index[prev_gaps | next_gaps | conversion_errors])
-        if inconsistent_indices:
-            logger.warning(
-                f"Inconsistent date indices with more than 12 months gap: {inconsistent_indices}"
-            )
-
-        return inconsistent_indices
-
     def fix_inconsistent_dates(
-        self, df: pd.DataFrame, inconsistent_indices: set
+        self, df: pd.DataFrame
     ) -> pd.DataFrame:
-        """
-        Fixes inconsistent dates in the specified DataFrame column by replacing them with the nearest valid dates.
-        It recives the inconsistent indexes and then, identifies the indices of inconsistent dates and attempts to replace them with the nearest valid dates.
-        If both previous and next valid dates are found, it uses the previous date if they are in the same month,
-        or calculates the midpoint month if they are in the same year. If only one valid date is found, it uses that date.
-        If no valid dates are found, it raises a ValueError.
-        Parameters:
-            df (pd.DataFrame): The DataFrame containing the date column to be fixed.
-        Returns:
-            pd.DataFrame: The DataFrame with inconsistent dates fixed.
-        Raises:
-            ValueError: If no valid dates are found to replace an inconsistent date, or if previous and next valid dates are in different years.
-        """
-        for index in inconsistent_indices:
-            logger.info(f"The problematic date is: {df.loc[index, self.timestamp_column + '_backup']}")
-            # Get the previous and next valid indices
-            prev_valid = None
-            for i in range(index - 1, 0, -1):
-                if i in inconsistent_indices:
-                    continue
-                if (
-                    prev := pd.to_datetime(
-                        df.loc[i, self.timestamp_column], errors="coerce"
-                    )
-                ) is not pd.NaT:
-                    prev_valid = (i, prev)
-                    break
-            next_valid = None
-            for i in range(index + 1, len(df)):
-                if i in inconsistent_indices:
-                    continue
-                if (
-                    next_v := pd.to_datetime(
-                        df.loc[i, self.timestamp_column], errors="coerce"
-                    )
-                ) is not pd.NaT:
-                    next_valid = (i, next_v)
-                    break
 
-            # Use previous or next valid date if available
-            if prev_valid is not None and next_valid is not None:
-                if abs((next_valid[1] - prev_valid[1])) <= pd.Timedelta(days=365): # type: ignore
-                    mean_date = min(prev_valid[1], next_valid[1]) + abs(((next_valid[1] - prev_valid[1])) / 2) # type: ignore
-                    df.loc[index, self.timestamp_column] = mean_date
-                    logger.warning(
-                        f"Using midpoint of {prev_valid} and {next_valid}. It result {mean_date} for index {index}"
-                    )
-                else:
-                    raise ValueError(
-                        f"Dates have more than 365 days of distance: {prev_valid} and {next_valid}"
-                    )
-            elif prev_valid is not None:
-                df.loc[index, self.timestamp_column] = prev_valid[1]
-                logger.warning(
-                    f"Using previous valid date: {prev_valid} for index {index}"
-                )
-            elif next_valid is not None:
-                df.loc[index, self.timestamp_column] = next_valid[1]
-                logger.warning(
-                    f"Using next valid date: {next_valid} for index {index}"
-                )
-            else:
-                raise ValueError(
-                    f"No valid dates found to replace inconsistent date at index {index}"
-                )
+        original_notif = df['DT_NOTIFIC'].copy()
+        df['DT_NOTIFIC'] = pd.to_datetime(df['DT_NOTIFIC'], errors='coerce')
+
+        # Print failed conversions for notification dates  
+        failed_notif = df['DT_NOTIFIC'].isna() & ~original_notif.isna()
+        if failed_notif.any():
+            logger.warning(f"Failed to convert {failed_notif.sum()} notification dates:")
+            logger.warning(original_notif[failed_notif].value_counts())
+        # Check if DT_DIAG exists in the dataframe
+        if 'DT_DIAG' in df.columns:
+            # Convert dates to datetime using vectorized operations
+            # Create backup of original dates
+            original_diag = df['DT_DIAG'].copy()
+
+            # Convert dates and check for failures
+            df['DT_DIAG'] = pd.to_datetime(df['DT_DIAG'], errors='coerce')
+
+            # Print failed conversions for diagnosis dates
+            failed_diag = df['DT_DIAG'].isna() & ~original_diag.isna()
+            if failed_diag.any():
+                logger.warning(f"Failed to convert {failed_diag.sum()} diagnosis dates:")
+                logger.warning(original_diag[failed_diag].value_counts())
+
+
+
+            # Vectorized date difference calculation
+            date_diff = df['DT_NOTIFIC'] - df['DT_DIAG']
+            mask = ~date_diff.isna() & (np.abs(date_diff) > pd.Timedelta(days=365))
+            if mask.any():
+                problematic_dates = df[mask][['DT_DIAG', 'DT_NOTIFIC']]
+                logger.warning("Found notifications with more than 12 months between diagnosis and notification dates:")
+                logger.warning(f"\n{problematic_dates}")
+                # Use DT_NOTIFIC for problematic dates
+                df.loc[mask, 'DT_DIAG'] = df.loc[mask, 'DT_NOTIFIC']
+
+            # Vectorized fallback to DT_NOTIFIC 
+            df['ds'] = df['DT_DIAG'].fillna(df['DT_NOTIFIC'])
+        else:
+            # If DT_DIAG doesn't exist, just use DT_NOTIFIC
+            failed_notif = df['DT_NOTIFIC'].isna() & ~original_notif.isna()
+            if failed_notif.any():
+                logger.warning(f"Failed to convert {failed_notif.sum()} notification dates:")
+                logger.warning(original_notif[failed_notif].value_counts())
+            df['ds'] = df['DT_NOTIFIC']
+
+        # Log and drop invalid rows in one operation
+        if df['ds'].isna().any():
+            logger.warning(f"Dropping rows with invalid dates")
+            df = df.dropna(subset=['ds'])
+        # Log rows where ds is before 1990
+        early_dates = df[df['ds'].dt.year < 1990]
+        if not early_dates.empty:
+            logger.warning(f"Found {len(early_dates)} rows with dates before 1990:")
+            logger.warning(early_dates)
+        # Drop rows where ds year equals ANO_NASC if ANO_NASC exists
+        if 'ANO_NASC' in df.columns:
+            if (invalid_year_mask := df['ds'].dt.year == df['ANO_NASC']).any():
+                logger.warning(f"Dropping {invalid_year_mask.sum()} rows where date equals birth year")
+                df = df[~invalid_year_mask] # type: ignore
+
         return df
+        
+
 
 
 if __name__ == "__main__":
