@@ -68,12 +68,11 @@ class SinanDataExtractor:
         self,
         disease_codes: list[str],
         path: str,
-        frequency: str = "ME",
-        split_rate=None,
+        frequency: str,
     ) -> None:
         self.path = path if path else DEFAULT_PATH
         self.disease_codes = disease_codes if disease_codes else SELECTED_DISEASES
-        self.frequency = frequency
+        self.frequency = frequency if frequency else "ME"
         self.sinan = SINAN().load()
 
     def extract(self) -> None:
@@ -83,6 +82,7 @@ class SinanDataExtractor:
         )
         self._preprocessing(cases)
         logger.info(f"Finished extracting SINAN data to {self.path}")
+        logger.error(f"Errors: {ERRORS}")
 
     def _get_disease_code_by_filename(self, case: ParquetSet) -> str:
         filename = case.path.split("/")[-1]
@@ -191,7 +191,11 @@ class SinanDataExtractor:
             names=["timestamp", "item_id"],
         )
 
-        return df.set_index(["timestamp", "item_id"]).reindex(idx, fill_value=0).reset_index()
+        return (
+            df.set_index(["timestamp", "item_id"])
+            .reindex(idx, fill_value=0)
+            .reset_index()
+        )
 
     def remove_inconsistent_dates(
         self, df: pd.DataFrame, dataset_year: str
@@ -231,4 +235,3 @@ if __name__ == "__main__":
         split_rate=None,
     )
     extractor.extract()
-    logger.error(f"Errors: {ERRORS}")
