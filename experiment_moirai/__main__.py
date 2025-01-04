@@ -11,7 +11,6 @@ logger = logging.getLogger(__package__)
 
 class MoiraiArgs(Args):
     patch_size: int
-    batch_size: int
 
 def main():
     logger.info("Initializing experiment")
@@ -24,12 +23,6 @@ def main():
         help="Patch size for Moirai model",
     )
 
-    parser.add_argument(
-        "--batch_size",
-        type=int,
-        default=32,
-        help="Batch size for Moirai model",
-    )
 
     args = parser.parse_args(namespace=MoiraiArgs)
 
@@ -44,7 +37,7 @@ def main():
     # Prepare pre-trained model by downloading model weights from huggingface hub
     if args.model_name == "moirai":
         model = MoiraiForecast(
-            module=MoiraiModule.from_pretrained(f"Salesforce/moirai-1.1-R-{args.model_size}"),
+            module=MoiraiModule.from_pretrained(args.model_path),
             prediction_length=args.prediction_length,
             context_length=args.context_length,
             patch_size=args.patch_size,
@@ -55,7 +48,7 @@ def main():
         )
     elif args.model_name == "moirai-moe":
         model = MoiraiMoEForecast(
-            module=MoiraiMoEModule.from_pretrained(f"Salesforce/moirai-moe-1.0-R-{args.model_size}"),
+            module=MoiraiMoEModule.from_pretrained(args.model_path),
             prediction_length=args.prediction_length,
             context_length=args.context_length,
             patch_size=args.patch_size,

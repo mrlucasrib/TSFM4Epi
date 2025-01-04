@@ -1,13 +1,15 @@
 from __future__ import annotations
 
 import logging
+import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 import mlflow
 import mlflow.client
 import mlflow.experiments
 import pandas as pd
-from gluonts.dataset.pandas import PandasDataset
+from gluonts.dataset.arrow import ParquetFile
 from gluonts.evaluation import Evaluator
 from gluonts.evaluation.backtest import _to_dataframe
 
@@ -74,6 +76,7 @@ class MLExperimentFacade:
         for metric_name, metric_value in agg_metrics.items():
             sanitized_metric_name = metric_name.replace("[", "_").replace("]", "_")
             mlflow.log_metric(sanitized_metric_name, metric_value)
+        self.save_metrics(agg_metrics, f"{self.artifacts_path}/metrics.csv", model_name)
         logger.info(f"Metrics logged")
 
         item_metrics_path = f"{self.artifacts_path}/item_metrics.csv"
@@ -81,14 +84,8 @@ class MLExperimentFacade:
         mlflow.log_artifact(item_metrics_path)
         mlflow.end_run()
 
-    def get_data(self, path: str) -> Dataset:
-        df = pd.read_parquet(path)
-        df.rename(
-            columns={"y": "target", "unique_id": "item_id", "ds": "timestamp"},
-            inplace=True,
-        )
-        df.set_index(["timestamp"], inplace=True)
-        return PandasDataset.from_long_dataframe(df, item_id="item_id", freq="M")
+    def get_data(self, path: str) -> ParquetFile:
+        return ParquetFile(Path(path))
 
     def backtest_metrics(
         self,
@@ -170,3 +167,28 @@ class MLExperimentFacade:
             predictor.predict(test_data.input, num_samples=num_samples),
             map(_to_dataframe, test_data),
         )
+
+    def save_metrics(self, metrics: dict[str, float], path: str, model_name: str) -> None:
+        """
+        Save metrics to a CSV file using built-in Python libraries.
+
+        Parameters
+        ----------
+        metrics : dict
+            Dictionary containing metrics to save
+        path : str
+            Path where to save the CSV file
+        model_name : str
+            Name of the model used
+        """
+        
+        # Check if file exists
+        file_exists = os.path.exists(path)
+        
+        with open(path, 'a') as f:
+            # Write header only if file doesn't exist
+            if not file_exists:
+                f.write('model_name,input_size,prediction_size,metric,value\n')
+            for metric, value in metrics.items():
+                sanitized_metric = metric.replace("[", "_").replace("]", "_")
+                f.write(f'{model_name},{self.context_length},{self.prediction_length},{sanitized_metric},{value}\n')
