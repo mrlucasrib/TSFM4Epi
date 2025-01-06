@@ -8,10 +8,9 @@ from typing import TYPE_CHECKING
 import mlflow
 import mlflow.client
 import mlflow.experiments
-import pandas as pd
-from gluonts.dataset.arrow import ParquetFile
 from gluonts.evaluation import Evaluator
 from gluonts.evaluation.backtest import _to_dataframe
+from gluonts.dataset.common import FileDataset
 
 from utils_exp.splitter import TSFMExperimentSplitter
 
@@ -84,8 +83,11 @@ class MLExperimentFacade:
         mlflow.log_artifact(item_metrics_path)
         mlflow.end_run()
 
-    def get_data(self, path: str) -> ParquetFile:
-        return ParquetFile(Path(path))
+    def get_data(self, path: str) -> Dataset:
+        return FileDataset(
+            path=Path(path), 
+            freq="M"
+        )
 
     def backtest_metrics(
         self,
