@@ -19,7 +19,7 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 RUN --mount=type=cache,target=/root/.cache/huggingface \ 
     if [ -f /workspaces/$EXPERIMENT_PATH/setup.sh ]; then \
         chmod +x /workspaces/$EXPERIMENT_PATH/setup.sh && \
-        ./workspaces/$EXPERIMENT_PATH/setup.sh; \
+        /workspaces/$EXPERIMENT_PATH/setup.sh; \
     fi
     
 COPY utils_exp/ /workspaces/utils_exp
