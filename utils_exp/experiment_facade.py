@@ -190,7 +190,7 @@ class MLExperimentFacade:
         with open(path, 'a') as f:
             # Write header only if file doesn't exist
             if not file_exists:
-                f.write('model_name,input_size,prediction_size,metric,value\n')
+                f.write('experiment_name,model_name,input_size,prediction_size,metric,value\n')
             for metric, value in metrics.items():
                 sanitized_metric = metric.replace("[", "_").replace("]", "_")
-                f.write(f'{model_name},{self.context_length},{self.prediction_length},{sanitized_metric},{value}\n')
+                f.write(f'{self.experiment_name},{model_name},{self.context_length},{self.prediction_length},{sanitized_metric},{value}\n')
