@@ -1,0 +1,4 @@
+gluonts==0.16.0
+torch==2.5.1
+ujson
+mlflow

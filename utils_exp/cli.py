@@ -1,17 +1,18 @@
 import argparse
 
+
 class Args(argparse.Namespace):
     experiment_name: str
     artifacts_path: str
     prediction_length: int
     context_length: int
-    ckpt_path: str
     model_name: str
     data_path: str
     num_samples: int
-    model_size: str
+    model_path: str
+    batch_size: int
 
-    
+
 def get_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Run experiment")
     parser.add_argument(
@@ -27,12 +28,6 @@ def get_parser() -> argparse.ArgumentParser:
         "--prediction_length", type=int, default=24, help="Prediction length"
     )
     parser.add_argument("--context_length", type=int, default=32, help="Context length")
-    parser.add_argument(
-        "--ckpt_path",
-        type=str,
-        required=True,
-        help="Checkpoint path",
-    )
     parser.add_argument("--model_name", type=str, required=True, help="Model name")
     parser.add_argument(
         "--data_path", type=str, required=True, help="Path to the training data"
@@ -41,10 +36,16 @@ def get_parser() -> argparse.ArgumentParser:
         "--num_samples", type=int, default=100, help="Number of samples"
     )
     parser.add_argument(
-    "--model_size",
-    type=str,
-    default="small",
-    help="Model size",
+        "--model_path",
+        type=str,
+        required=True,
+        help="Model path",
+    )
+    parser.add_argument(
+        "--batch_size",
+        type=int,
+        default=1024,
+        help="Batch size for model that needs to be specified",
     )
     return parser
 

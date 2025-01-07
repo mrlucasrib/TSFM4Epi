@@ -47,7 +47,7 @@ if __name__ == "__main__":
         ckpt = torch.load(args.ckpt_path, map_location=device, weights_only=False)
         estimator_args = ckpt["hyper_parameters"]["model_kwargs"]
         estimator = LagLlamaEstimator(
-            ckpt_path=args.ckpt_path,
+            ckpt_path=args.model_path,
             prediction_length=prediction_length,
             context_length=args.context_length,
             input_size=estimator_args["input_size"],
