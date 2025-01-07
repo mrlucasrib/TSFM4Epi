@@ -15,7 +15,8 @@
 	],
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
-		"ghcr.io/devcontainers/features/git:1": []
+		"ghcr.io/devcontainers/features/git:1": [],
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
 	},
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
@@ -25,35 +26,12 @@
 			"extensions": [
 				"ms-python.python",
 				"ms-python.debugpy"
-			],
-			"settings": {
-				"python.pythonPath": "${workspaceFolder}/.venv/bin/python",
-				"python.venvPath": "${workspaceFolder}/.venv",
-				"python.terminal.activateEnvironment": true
-			}
+			]
 		}
 	},
 	// Uncomment to connect as root instead. More info: https://aka.ms/dev-containers-non-root.
 	"remoteUser": "${localEnv:USER}",
 	"containerUser": "${localEnv:USER}",
 	"updateRemoteUserUID": true,
-
-
-
-
-
-
-
-
-
-
-
-
-	"shutdownAction": "stopContainer",
-	"containerEnv": {
-		"VIRTUAL_ENV": "${workspaceFolder}/.venv"
-	},
-	"mounts": [
-		"source=${localEnv:HOME}/.ssh,target=/home/${localEnv:USER}/.ssh,readonly"
-	]
+	"shutdownAction": "stopContainer"
 }
