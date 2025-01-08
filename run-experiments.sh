@@ -13,9 +13,9 @@ files=(
 # Define models and their configurations
 declare -A models
 models=(
-    ["tinytimemixer"]="ttms not-used"
+    ["lagllama"]="lagllama /lag-llama/lag-llama.ckpt"
+    # ["tinytimemixer"]="ttms not-used"
     ["moirai"]="moirai Salesforce/moirai-1.1-R-small"
-    # ["lagllama"]="lagllama /path/to/lagllama/model"
 )
 # Create logs directory if it doesn't exist
 mkdir -p logs
@@ -27,16 +27,20 @@ for model_key in "${!models[@]}"; do
     docker build -t ${model_name} --build-arg EXPERIMENT_PATH="experiment_${model_name}" . >> "logs/build_logs_${model_name}.txt" 2>&1
 
     echo "Processing model: $model_name"
-    
+    # Check if requirements.txt exists in experiment folder
+    # if [ ! -f "experiment_${model_name}/requirements.txt" ]; then
+    #     echo "Creating requirements.txt for ${model_name}..."
+    #     pip-compile "experiment_${model_name}/requirements.in" base_requirements.in -o experiment_${model_name}/requirements.txt 
+    # fi
     # Loop through each file
     for file in "${files[@]}"; do
         echo "Processing $file with $model_name..."
         MLFLOW_TRACKING_URI=/artifacts/mlruns docker run -v ~/data:/data -v ~/artifacts:/artifacts ${model_name} \
-            --experiment_name "${file}_${model_name}" \
+            --experiment_name "${file}" \
             --artifacts_path "/artifacts" \
             --prediction_length 24 \
             --context_length 32 \
-            --model_name "$model_name" \
+            --model_name "AutoArima" \
             --data_path "/data/${file}.parquet" \
             --num_samples 100 \
             --model_path "$model_path" >> "logs/logs_${model_name}_${file}.txt" 2>&1
