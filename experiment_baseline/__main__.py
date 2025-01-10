@@ -150,7 +150,7 @@ class StatsForecastPredictor(RepresentablePredictor):
                 f"{entry['item_id']}_{str(forecast_start(entry))}_{str(len(batch))}"
             )
             start = entry["start"]
-            batch[entry['item_id']] = pd.DataFrame(
+            batch[unique_id] = pd.DataFrame(
                 {
                     "unique_id": unique_id,
                     "ds": pd.date_range(
@@ -199,8 +199,8 @@ class StatsForecastPredictor(RepresentablePredictor):
             )
             results = pd.concat(
                 [
-                    results[~results.index.isin(nan_ids)],
-                    fallback_results,
+                    results[~results.index.isin(nan_ids)], # type: ignore
+                    fallback_results, # type: ignore
                 ]
             )
 
