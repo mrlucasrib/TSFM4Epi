@@ -75,7 +75,7 @@ def main():
         prediction_length=args.prediction_length,
         context_length=args.context_length,
     )
-    if args.model_path == "timesfm-1.0":
+    if args.model_path.startswith("timesfm-1.0"):
         tfm = timesfm.TimesFm(
                 hparams=timesfm.TimesFmHparams(
                     backend="gpu",
@@ -90,7 +90,7 @@ def main():
                 path="/models/timesfm-1.0/checkpoints",
                 # huggingface_repo_id="google/timesfm-1.0-200m"),
             ))
-    else:
+    elif args.model_path.startswith("timesfm-2.0"):
         tfm = timesfm.TimesFm(
             hparams=timesfm.TimesFmHparams(
                 backend="gpu",
@@ -100,7 +100,9 @@ def main():
             checkpoint=timesfm.TimesFmCheckpoint(
                 path="/models/timesfm-2.0/checkpoints",
                 # huggingface_repo_id="google/timesfm-2.0-500m-jax"),
-                ))
+            ))
+    else:
+        raise ValueError(f"Unsupported model path: {args.model_path}")
     predictor = TimesFmPredictor(
         tfm=tfm,
         prediction_length=args.prediction_length,
