@@ -20,6 +20,7 @@ def main():
         context_length=512,
         prediction_length=96,
         trim_prediction_length=args.prediction_length,
+        model_path=f"/models/{args.model_path}",
     )
     exp = MLExperimentFacade(
         experiment_name=args.experiment_name,
