@@ -24,6 +24,9 @@ from statsforecast.models import (
     AutoTheta,
     AutoRegressive,
     AutoCES,
+    CrostonOptimized,
+    CrostonClassic,
+    CrostonSBA
 )
 
 from utils_exp import Args, MLExperimentFacade, get_parser
@@ -256,6 +259,9 @@ def main():
         "auto_theta": AutoTheta,
         "auto_regressive": AutoRegressive,
         "auto_ces": AutoCES,
+        "croston_classic": CrostonClassic,
+        "croston_optimized": CrostonOptimized,
+        "   ": CrostonSBA,
     }
     predictor = StatsForecastPredictor(
             args.prediction_length,
