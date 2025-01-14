@@ -1,4 +1,1 @@
-chronos-forecasting
-gluonts
-mlflow
-tqdm
+chronos-forecasting==1.4.1
