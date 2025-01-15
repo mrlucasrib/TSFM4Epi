@@ -117,13 +117,14 @@ class MLExperimentFacade:
         -------
         A tuple of aggregate metrics and metrics per time series split.
         """
+        start_time = time.time()
         forecast_it, ts_it = self.make_evaluation_predictions(
             predictor=predictor, dataset=dataset, num_samples=num_samples
         )
         # Calculate time taken to make forecast
-        start_time = time.time()
         forecast = list(forecast_it)
         end_time = time.time()
+        time_to_forecast = end_time - start_time
         logger.info(
             f"Time taken to transform to list of size {len(forecast)}: {end_time - start_time} seconds"
         )
@@ -131,6 +132,7 @@ class MLExperimentFacade:
         mlflow.log_metric("forecast_size", len(forecast))
 
         agg_metrics, item_metrics = evaluator(ts_it, forecast)
+        agg_metrics["time_to_forecast"] = time_to_forecast
         return agg_metrics, item_metrics
 
     def make_evaluation_predictions(
