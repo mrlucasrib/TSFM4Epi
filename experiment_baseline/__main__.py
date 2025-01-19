@@ -3,6 +3,7 @@
 import inspect
 from dataclasses import dataclass, field
 from collections.abc import Iterator
+from typing import Type
 import logging
 
 from gluonts.time_feature import get_seasonality
@@ -21,12 +22,6 @@ from statsforecast.models import (
     SeasonalNaive,
     AutoARIMA,
     AutoETS,
-    AutoTheta,
-    AutoRegressive,
-    AutoCES,
-    CrostonOptimized,
-    CrostonClassic,
-    CrostonSBA
 )
 
 from utils_exp import Args, MLExperimentFacade, get_parser
@@ -86,6 +81,7 @@ class StatsForecastPredictor(RepresentablePredictor):
         for details.
     """
 
+    ModelType: Type
 
     @validated()
     def __init__(
@@ -100,11 +96,6 @@ class StatsForecastPredictor(RepresentablePredictor):
         parallel: bool = False,
         **model_params,
     ) -> None:
-        self.ModelType = model_params["stats_model"]
-        if self.ModelType is None:
-            raise ValueError("stats_model must be provided")
-        del model_params["stats_model"]
-
         super().__init__(prediction_length=prediction_length)
 
         if "season_length" in inspect.signature(self.ModelType.__init__).parameters:
@@ -134,7 +125,10 @@ class StatsForecastPredictor(RepresentablePredictor):
 
     def predict(self, dataset: Dataset, **kwargs) -> Iterator[Forecast]:
         batch = {}
-        for idx, entry in enumerate(dataset):
+        total_series = len(dataset)
+        self.logger.info(f"Starting prediction on {total_series} series.")
+
+        for entry in dataset:
             assert entry["target"].ndim == 1, "only for univariate time series"
             assert (
                 len(entry["target"]) >= 1
@@ -149,33 +143,18 @@ class StatsForecastPredictor(RepresentablePredictor):
                 target = target.copy()
                 target = self.imputation_method(target)
 
-            unique_id = (
-                f"{entry['item_id']}_{str(forecast_start(entry))}_{str(len(batch))}"
-            )
             start = entry["start"]
-            batch[unique_id] = pd.DataFrame(
-                {
-                    "unique_id": unique_id,
+            entry_statsforecast_input_format = pd.DataFrame({
+                    "unique_id": entry["item_id"],
                     "ds": pd.date_range(
                         start=start.to_timestamp(),
                         periods=len(target),
                         freq=start.freq,
                     ).to_numpy(),
                     "y": target,
-                }
-            )
-
-            if len(batch) == self.batch_size:
-                self.logger.info(f"Processing batch {idx // self.batch_size + 1}.")
-                results = self.sf_predict(pd.concat(batch.values()))
-                yield from self.yield_forecast(batch.keys(), results)
-                batch = {}
-
-        if len(batch) > 0:
-            self.logger.info(f"Processing final batch.")
-            results = self.sf_predict(pd.concat(batch.values()))
-            yield from self.yield_forecast(batch.keys(), results)
-
+                })
+            results = self.sf_predict(entry_statsforecast_input_format)
+            yield from self.yield_forecast(results, dataset)
         self.logger.info("Prediction completed.")
 
     def sf_predict(self, Y_df: pd.DataFrame) -> pd.DataFrame:
@@ -202,34 +181,31 @@ class StatsForecastPredictor(RepresentablePredictor):
             )
             results = pd.concat(
                 [
-                    results[~results.index.isin(nan_ids)], # type: ignore
-                    fallback_results, # type: ignore
+                    results[~results.index.isin(nan_ids)],
+                    fallback_results,
                 ]
             )
-
         return results
 
     def yield_forecast(
-        self, item_ids, results: pd.DataFrame
+        self, prediction: pd.DataFrame, dataset
     ) -> Iterator[QuantileForecast]:
-        for idx in item_ids:
-            prediction = results[results["unique_id"] == idx]
-            forecast_arrays = []
-            model_name = self.ModelType.__name__
-            for key in self.config.statsforecast_keys:
-                if key == "mean":
-                    forecast_arrays.append(prediction.loc[:, model_name].to_numpy())
-                else:
-                    forecast_arrays.append(
-                        prediction.loc[:, f"{model_name}-{key}"].to_numpy()
-                    )
+        forecast_arrays = []
+        model_name = self.ModelType.__name__
+        for key in self.config.statsforecast_keys:
+            if key == "mean":
+                forecast_arrays.append(prediction.loc[:, model_name].to_numpy())
+            else:
+                forecast_arrays.append(
+                    prediction.loc[:, f"{model_name}-{key}"].to_numpy()
+                )
 
-            yield QuantileForecast(
-                forecast_arrays=np.stack(forecast_arrays, axis=0),
-                forecast_keys=self.config.forecast_keys,
-                start_date=prediction.ds.iloc[0].to_period(freq=self.freq),
-                item_id=idx,
-            )
+        yield QuantileForecast(
+            forecast_arrays=np.stack(forecast_arrays, axis=0),
+            forecast_keys=self.config.forecast_keys,
+            start_date=prediction.ds.iloc[0].to_period(freq=self.freq),
+            item_id=prediction.unique_id.iloc[0],
+        )
 
 
 class NaivePredictor(StatsForecastPredictor):
@@ -243,6 +219,40 @@ class NaivePredictor(StatsForecastPredictor):
 
     ModelType = Naive
 
+class SeasonalNaivePredictor(StatsForecastPredictor):
+    """
+    A predictor wrapping the ``SeasonalNaive`` model from `statsforecast`_.
+
+    See :class:`StatsForecastPredictor` for the list of arguments.
+
+    .. _statsforecast: https://github.com/Nixtla/statsforecast
+    """
+
+    ModelType = SeasonalNaive
+
+
+class AutoARIMAPredictor(StatsForecastPredictor):
+    """
+    A predictor wrapping the ``AutoARIMA`` model from `statsforecast`_.
+
+    See :class:`StatsForecastPredictor` for the list of arguments.
+
+    .. _statsforecast: https://github.com/Nixtla/statsforecast
+    """
+
+    ModelType = AutoARIMA
+
+
+class AutoETSPredictor(StatsForecastPredictor):
+    """
+    A predictor wrapping the ``AutoETS`` model from `statsforecast`_.
+
+    See :class:`StatsForecastPredictor` for the list of arguments.
+
+    .. _statsforecast: https://github.com/Nixtla/statsforecast
+    """
+
+    ModelType = AutoETS
 
 def main():
     logger.info("Initializing experiment")
@@ -252,25 +262,19 @@ def main():
 
     season_length = get_seasonality('M')
     matching_models = {
-        "naive": Naive,
-        "seasonal_naive": SeasonalNaive,
-        "auto_arima": AutoARIMA,
-        "auto_ets": AutoETS,
-        "auto_theta": AutoTheta,
-        "auto_regressive": AutoRegressive,
-        "auto_ces": AutoCES,
-        "croston_classic": CrostonClassic,
-        "croston_optimized": CrostonOptimized,
-        "   ": CrostonSBA,
+        "naive": NaivePredictor,
+        "seasonal_naive": SeasonalNaivePredictor,
+        "auto_arima": AutoARIMAPredictor,
+        "auto_ets": AutoETSPredictor,
     }
-    predictor = StatsForecastPredictor(
+    selected_model = matching_models.get(args.model_name)
+    predictor = selected_model(
             args.prediction_length,
             max_length=args.prediction_length,
             season_length=season_length,
             freq='M',
             quantile_levels=[0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9],
             batch_size=args.batch_size,
-            stats_model=matching_models[args.model_name],
     )
     exp = MLExperimentFacade(
         experiment_name=args.experiment_name,
