@@ -22,6 +22,10 @@ if __name__ == "__main__":
 
     ckpt = torch.load(args.model_path, map_location=device, weights_only=False)
     estimator_args = ckpt["hyper_parameters"]["model_kwargs"]
+    rope_scaling_arguments = {
+        "type": "linear",
+        "factor": max(1.0, (args.context_length + prediction_length) / estimator_args["context_length"]),
+    }
     estimator = LagLlamaEstimator(
         ckpt_path=args.model_path,
         prediction_length=prediction_length,
@@ -35,6 +39,7 @@ if __name__ == "__main__":
         batch_size=1,
         num_parallel_samples=args.num_samples,
         device=device,
+        rope_scaling=rope_scaling_arguments
     )
 
     lightning_module = estimator.create_lightning_module()
