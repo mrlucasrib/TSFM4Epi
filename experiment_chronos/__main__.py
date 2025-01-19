@@ -68,18 +68,17 @@ class ChronosPredictor(RepresentablePredictor):
         # Convert forecast samples into gluonts Forecast objects
         forecasts = []
         for item, ts in zip(forecast_outputs, dataset):
-            forecast_start_date = ts["start"] + len(ts["target"])
-
             if pipeline.forecast_type == ForecastType.SAMPLES:
                 forecasts.append(
-                    SampleForecast(samples=item, start_date=forecast_start_date)
+                    SampleForecast(samples=item, start_date=ts["start"], item_id=ts["item_id"])
                 )
             elif pipeline.forecast_type == ForecastType.QUANTILES:
                 forecasts.append(
                     QuantileForecast(
                         forecast_arrays=item,
                         forecast_keys=list(map(str, pipeline.quantiles)),
-                        start_date=forecast_start_date,
+                        start_date=ts["start"],
+                        item_id=ts["item_id"],
                     )
                 )
 
