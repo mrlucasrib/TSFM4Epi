@@ -1,4 +1,5 @@
 # Predictor based on https://github.com/SalesforceAIResearch/gift-eval/blob/main/notebooks/timesfm.ipynb
+# with modifications
 from __future__ import annotations
 
 import logging
@@ -54,12 +55,12 @@ class TimesFmPredictor(RepresentablePredictor):
         # Convert forecast samples into gluonts Forecast objects
         forecasts: list[Forecast] = []
         for item, ts in zip(forecast_outputs, dataset):
-            forecast_start_date = ts["start"] + len(ts["target"])
             forecasts.append(
                 QuantileForecast(
                     forecast_arrays=item,
                     forecast_keys=list(map(str, self.tfm.quantiles)),
-                    start_date=forecast_start_date,
+                    start_date=ts["start"],
+                    item_id=ts["item_id"],
                 ))
 
         return iter(forecasts)
@@ -79,16 +80,16 @@ def main():
         tfm = timesfm.TimesFm(
                 hparams=timesfm.TimesFmHparams(
                     backend="gpu",
-                    per_core_batch_size=32,
-                    num_layers=50,
-                    horizon_len=128,
-                    context_len=2048,
-                    use_positional_embedding=False,
+                    input_patch_len=32,
                     output_patch_len=128,
+                    num_layers=20,
+                    model_dims=1280,
+                    context_len=128,
+                    horizon_len=32,
                 ),
             checkpoint=timesfm.TimesFmCheckpoint(
-                path="/models/timesfm-1.0/checkpoints",
-                # huggingface_repo_id="google/timesfm-1.0-200m"),
+                path="/models/timesfm-1.0/checkpoints/",
+                # huggingface_repo_id="google/timesfm-1.0-200m",
             ))
     elif args.model_path.startswith("timesfm-2.0"):
         tfm = timesfm.TimesFm(
