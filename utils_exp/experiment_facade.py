@@ -77,7 +77,8 @@ class MLExperimentFacade:
             mlflow.log_metric(sanitized_metric_name, metric_value)
         self.save_metrics(agg_metrics, f"{self.artifacts_path}/metrics.csv", model_name)
         logger.info(f"Metrics logged")
-
+        self.save_item_metrics(item_metrics, f"{self.artifacts_path}/item_metrics_aggregated.csv", model_name)
+        logger.info(f"Item metrics logged")
         item_metrics_path = f"{self.artifacts_path}/item_metrics.csv"
         item_metrics.to_csv(item_metrics_path, index=False)
         mlflow.log_artifact(item_metrics_path)
@@ -196,3 +197,27 @@ class MLExperimentFacade:
             for metric, value in metrics.items():
                 sanitized_metric = metric.replace("[", "_").replace("]", "_")
                 f.write(f'{self.experiment_name},{model_name},{self.context_length},{self.prediction_length},{sanitized_metric},{value}\n')
+
+    def save_item_metrics(self, item_metrics: DataFrame, path: str, model_name: str) -> None:
+        """
+        Save item metrics to a CSV file, aggregated by item_id.
+
+        Parameters
+        ----------
+        item_metrics : DataFrame
+            DataFrame containing item metrics to save
+        path : str
+            Path where to save the CSV file
+        model_name : str
+            Name of the model used
+        """
+        
+        # Check if file exists
+        file_exists = os.path.exists(path)
+        
+        with open(path, 'a') as f:
+            # Write header only if file doesn't exist
+            if not file_exists:
+                f.write('experiment_name,model_name,item_id,forecast_start,MSE,abs_error,abs_target_sum,abs_target_mean,seasonal_error,MASE,MAPE,sMAPE,num_masked_target_values,ND,MSIS,QuantileLoss_0.1,Coverage_0.1,QuantileLoss_0.2,Coverage_0.2,QuantileLoss_0.3,Coverage_0.3,QuantileLoss_0.4,Coverage_0.4,QuantileLoss_0.5,Coverage_0.5,QuantileLoss_0.6,Coverage_0.6,QuantileLoss_0.7,Coverage_0.7,QuantileLoss_0.8,Coverage_0.8,QuantileLoss_0.9,Coverage_0.9,context_length,prediction_length\n')
+            for _, row in item_metrics.iterrows():
+                f.write(f'{self.experiment_name},{model_name},{row["item_id"]},{row["forecast_start"]},{row["MSE"]},{row["abs_error"]},{row["abs_target_sum"]},{row["abs_target_mean"]},{row["seasonal_error"]},{row["MASE"]},{row["MAPE"]},{row["sMAPE"]},{row["num_masked_target_values"]},{row["ND"]},{row["MSIS"]},{row["QuantileLoss[0.1]"]},{row["Coverage[0.1]"]},{row["QuantileLoss[0.2]"]},{row["Coverage[0.2]"]},{row["QuantileLoss[0.3]"]},{row["Coverage[0.3]"]},{row["QuantileLoss[0.4]"]},{row["Coverage[0.4]"]},{row["QuantileLoss[0.5]"]},{row["Coverage[0.5]"]},{row["QuantileLoss[0.6]"]},{row["Coverage[0.6]"]},{row["QuantileLoss[0.7]"]},{row["Coverage[0.7]"]},{row["QuantileLoss[0.8]"]},{row["Coverage[0.8]"]},{row["QuantileLoss[0.9]"]},{row["Coverage[0.9]"]},{self.context_length},{self.prediction_length}\n')
