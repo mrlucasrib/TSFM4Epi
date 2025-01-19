@@ -14,11 +14,11 @@ def main():
 
     logger.info("Creating TTM GluonTS predictor")
     logger.warning(
-        "The TTM model requires at least 512 context length and 96 prediction length."
+        "The TTM model requires at least 512 context length and 96 prediction length. The padding will be done automatically."
     )
     ttm_predictor = TTMGluonTSPredictor(
-        context_length=512,
-        prediction_length=96,
+        context_length=args.context_length,
+        prediction_length=args.prediction_length,
         trim_prediction_length=args.prediction_length,
         model_path=f"/models/{args.model_path}",
     )
