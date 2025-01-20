@@ -120,7 +120,7 @@ class StatsForecastPredictor(RepresentablePredictor):
         self.max_length = max_length
 
         # Set up the logger
-        self.logger = logging.getLogger(__name__)
+        self.logger = logging.getLogger(__package__)
         logging.basicConfig(level=logging.INFO)
 
     def predict(self, dataset: Dataset, **kwargs) -> Iterator[Forecast]:
