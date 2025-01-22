@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 import mlflow
 import mlflow.client
 import mlflow.experiments
-from gluonts.evaluation import Evaluator
+from gluonts.evaluation import Evaluator, aggregate_valid
 from gluonts.evaluation.backtest import _to_dataframe
 from gluonts.dataset.common import FileDataset
 
@@ -79,7 +79,7 @@ class MLExperimentFacade:
         logger.info(f"Metrics logged")
         self.save_item_metrics(item_metrics, f"{self.artifacts_path}/item_metrics_aggregated.csv", model_name)
         logger.info(f"Item metrics logged")
-        item_metrics_path = f"{self.artifacts_path}/item_metrics.csv"
+        item_metrics_path = f"{self.artifacts_path}/item_metrics_{model_name}_{self.experiment_name}_{self.prediction_length}_{self.context_length}.csv"
         item_metrics.to_csv(item_metrics_path, index=False)
         mlflow.log_artifact(item_metrics_path)
         mlflow.end_run()
@@ -94,7 +94,7 @@ class MLExperimentFacade:
         self,
         dataset: Dataset,
         predictor: Predictor,
-        evaluator=Evaluator(quantiles=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)),
+        evaluator=Evaluator(quantiles=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9), aggregation_strategy=aggregate_valid),
         num_samples: int = 100,
     ) -> tuple[dict[str, float], DataFrame]:
         """
