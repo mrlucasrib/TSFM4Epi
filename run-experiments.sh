@@ -3,7 +3,9 @@ set -o pipefail
 set -e
 echo "Script PID: $$"
 
-local_artifacts="/media/work/lucasribeiro/GitProjects/Ribeiro2025/art0"
+local_artifacts="~/artifacts"
+# mkdir -p ${local_artifacts}
+rm -rf ${local_artifacts}/*
 # List of parquet files
 files=(
     "CHIKBR" "EXANBR" "LEIVBR" "MENIBR" "SIFGBR" 
@@ -54,8 +56,8 @@ model_keys=($(for key in "${!models[@]}"; do echo "$key ${models[$key]}" | awk '
 
 # Define context length and prediction length pairs
 declare -a context_prediction_pairs=(
-    "32 24"
     "32 12"
+    "32 24"
     "96 12"
     "96 24"
     "168 12"
@@ -73,28 +75,31 @@ for model_key in "${model_keys[@]}"; do
         docker rm $(docker ps -a -q --filter ancestor=${previous_model_name}) # && docker rmi ${previous_model_name}
         docker builder prune -f
     fi
-    
+    echo "Building model: $model_name"
     docker build -t ${model_name} --build-arg EXPERIMENT_PATH="experiment_${model_name}" . 2>&1 | tee "logs/build_logs_${model_name}.txt"
     echo "Processing model: $model_key"
     
     # Loop through each context length and prediction length pair
+    for i in {1..10}; do
     for pair in "${context_prediction_pairs[@]}"; do
         read -r context_length prediction_length <<< "$pair"
     
     # Loop through each file
     for file in "${files[@]}"; do
             echo "Processing $file with $model_key (context_length=$context_length, prediction_length=$prediction_length)..."
-            docker run --gpus all -v ~/data/processed_gluonts6/:/data -v /media/work/lucasribeiro/GitProjects/Ribeiro2025/art2:/artifacts ${model_name} \
+                docker run --gpus all -v ~/data/processed_gluonts6/:/data -v ${local_artifacts}:/artifacts -e LOG_LEVEL='INFO' ${model_name} \
             --experiment_name "${file}" \
             --artifacts_path "/artifacts" \
                 --prediction_length "$prediction_length" \
                 --context_length "$context_length" \
             --model_name "$model_key" \
             --data_path "/data/${file}.parquet" \
-            --num_samples 100 \
+                    --num_samples 20 \
                 --model_path "$model_path" 2>&1 | tee -a "logs/logs_${model_key}.txt" || true
             echo "Completed $file with $model_key (context_length=$context_length, prediction_length=$prediction_length)"
         echo "-------------------"
+            done
+        done
         done
     done
     

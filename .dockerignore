@@ -60,10 +60,10 @@ htmlcov/
 
 # Misc
 data/
-AutogluonModels/
 artifacts/
-content/
 requirements.in
+reports/
+art*
 # MLFlow
 mlruns/
 ml
