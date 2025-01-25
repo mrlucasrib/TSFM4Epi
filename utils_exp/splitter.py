@@ -12,7 +12,7 @@ if TYPE_CHECKING:
 
     from gluonts.dataset.common import DataEntry, Dataset
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(__file__)
 
 
 @dataclass
@@ -37,7 +37,7 @@ class TSFMExperimentSplitter(AbstractBaseSplitter):
     context_length: int = 32
 
     def training_entry(self, entry: DataEntry) -> DataEntry:
-        # TODO: Verificar a real necessidade
+        # It isn't necessary to the experiment, but it need to be implemented to avoid errors
         return slice_data_entry(entry, slice(None, self.offset))
 
     def test_pair(
@@ -88,6 +88,7 @@ class TSFMExperimentSplitter(AbstractBaseSplitter):
                 test = self.test_pair(
                     entry, prediction_length=prediction_length, offset=current_offset
                 )
+                logger.debug(f'Generated test pair - context start {test[0]["start"]}; forecast start {test[1]["start"]} - {test[0]["item_id"]}')
                 yield test[0], test[1]
                 current_offset += distance
                 splits_num += 1
