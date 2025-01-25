@@ -48,7 +48,7 @@ class ChronosPredictor(RepresentablePredictor):
             try:
                 # Generate forecast samples
                 forecast_outputs = []
-                for batch in tqdm(batcher(dataset, batch_size=batch_size)):
+                for batch in batcher(dataset, batch_size=batch_size):
                     context = [torch.tensor(entry["target"]) for entry in batch]
                     forecast_outputs.append(
                         pipeline.predict(
@@ -70,14 +70,14 @@ class ChronosPredictor(RepresentablePredictor):
         for item, ts in zip(forecast_outputs, dataset):
             if pipeline.forecast_type == ForecastType.SAMPLES:
                 forecasts.append(
-                    SampleForecast(samples=item, start_date=ts["start"], item_id=ts["item_id"])
+                    SampleForecast(samples=item, start_date=ts["start"] + len(ts["target"]), item_id=ts["item_id"])
                 )
             elif pipeline.forecast_type == ForecastType.QUANTILES:
                 forecasts.append(
                     QuantileForecast(
                         forecast_arrays=item,
                         forecast_keys=list(map(str, pipeline.quantiles)),
-                        start_date=ts["start"],
+                        start_date=ts["start"] + len(ts["target"]),
                         item_id=ts["item_id"],
                     )
                 )

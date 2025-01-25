@@ -3,7 +3,6 @@ import logging
 from experiment_ttms.ttm_gluonts_predictor import TTMGluonTSPredictor
 from utils_exp import Args, MLExperimentFacade, get_parser
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__package__)
 
 
@@ -19,7 +18,6 @@ def main():
     ttm_predictor = TTMGluonTSPredictor(
         context_length=args.context_length,
         prediction_length=args.prediction_length,
-        trim_prediction_length=args.prediction_length,
         model_path=f"/models/{args.model_path}",
     )
     exp = MLExperimentFacade(

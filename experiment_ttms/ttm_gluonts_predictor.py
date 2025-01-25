@@ -3,6 +3,7 @@
 # with minor modifications
 
 """Tools for building TTM Predictor that works with GluonTS datasets"""
+import logging
 import numpy as np
 import pandas as pd
 import torch
@@ -16,7 +17,7 @@ from tsfm_public.toolkit.get_model import get_model
 
 # TTM Constants
 TTM_MAX_FORECAST_HORIZON = 720
-
+logger = logging.getLogger(__file__)
 
 def impute_series(target):
     if np.isnan(target).any():
@@ -34,8 +35,6 @@ def impute_series(target):
 
 
 class TTMGluonTSPredictor(Predictor):
-    # TODO: crop predction_length to args.prediction_length
-
     """Wrapper to TTM that can be directly trained, validated, and tested with GluonTS datasets."""
 
     def __init__(
@@ -84,10 +83,10 @@ class TTMGluonTSPredictor(Predictor):
             try:
                 # Generate forecast samples
                 forecast_samples = []
-                for batch in tqdm(batcher(dataset, batch_size=batch_size)):
+                for batch in batcher(dataset, batch_size=batch_size):
                     batch_ttm = {}
                     adjusted_batch_raw = []
-                    for idx, entry in enumerate(batch):
+                    for entry in batch:
                         # univariate array of shape (time,)
                         # multivariate array of shape (var, time)
                         # TTM supports multivariate time series
@@ -130,6 +129,7 @@ class TTMGluonTSPredictor(Predictor):
                     )
                     # This statment won't ever be true in experiment settings
                     if self.prediction_length > TTM_MAX_FORECAST_HORIZON:
+                        logger.error("It should not happen")
                         recursive_steps = int(
                             np.ceil(
                                 self.prediction_length
@@ -184,7 +184,7 @@ class TTMGluonTSPredictor(Predictor):
                 SampleForecast(
                     item_id=ts["item_id"],
                     samples=np.expand_dims(item, axis=0),
-                    start_date=ts["start"],
+                    start_date=ts["start"] + len(ts["target"]),
                 )
             )
         return iter(sample_forecasts)

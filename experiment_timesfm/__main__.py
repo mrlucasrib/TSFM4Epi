@@ -59,7 +59,7 @@ class TimesFmPredictor(RepresentablePredictor):
                 QuantileForecast(
                     forecast_arrays=item,
                     forecast_keys=list(map(str, self.tfm.quantiles)),
-                    start_date=ts["start"],
+                    start_date=ts["start"] + len(ts["target"]),
                     item_id=ts["item_id"],
                 ))
 

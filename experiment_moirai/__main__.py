@@ -40,7 +40,7 @@ def main():
             module=MoiraiMoEModule.from_pretrained(f"/models/{args.model_path}"),
             prediction_length=args.prediction_length,
             context_length=args.context_length,
-            patch_size=args.patch_size,
+            patch_size=8 if args.patch_size == "auto" else args.patch_size,
             num_samples=args.num_samples,
             target_dim=1,
             feat_dynamic_real_dim=0,
