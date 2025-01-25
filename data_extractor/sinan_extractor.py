@@ -155,8 +155,9 @@ class SinanDataExtractor:
                     raise ValueError(
                         "There are more than 24 years between the max and min date in the dataset, it should be a problem"
                     )
-
-                SAVE_PATH = f"{self.path}/processed_gluonts"
+                
+                grouped_df = self.filter_by_threshold(grouped_df)
+                SAVE_PATH = f"{self.path}/processed_gluonts6"
                 Path(SAVE_PATH).mkdir(parents=True, exist_ok=True)
                 self.to_gluonts_format(
                     grouped_df, f"{SAVE_PATH}/{disease_name}.parquet"
@@ -168,7 +169,38 @@ class SinanDataExtractor:
                 )
                 ERRORS.append(disease_name)
                 continue
+    def filter_by_threshold(self, df: pd.DataFrame, length_threshold: int = 80, mean_threshold: float = 50) -> pd.DataFrame:
+        """Filters out items with a length below a specified threshold and a mean target value below a specified threshold.
 
+        This method removes items from the dataset whose length is below the given threshold and whose mean target value is below the given threshold. This can help in focusing on items with more significant activity.
+
+        Args:
+            df: DataFrame with the dataset.
+            length_threshold: The length threshold below which items will be removed.
+            mean_threshold: The mean target value threshold below which items will be removed.
+
+        Returns:
+            DataFrame with items filtered by the length and mean target value thresholds.
+        """
+        item_lengths = df.groupby("item_id").size()
+        mean_values = df.groupby("item_id")["target"].mean()
+        filtered_items = mean_values[(item_lengths > length_threshold) & (mean_values > mean_threshold)].index
+        
+        if len(filtered_items) < len(mean_values):
+            removed_items = mean_values[(item_lengths <= length_threshold) | (mean_values <= mean_threshold)].index
+            logger.warning(
+                f"Removing items with length below {length_threshold} or mean target value below {mean_threshold}: {removed_items.tolist()}"
+            )
+        
+        filtered_df = df[df["item_id"].isin(filtered_items)]
+        
+        if filtered_df.empty:
+            raise ValueError("The resulting DataFrame is empty after filtering by length and mean thresholds.")
+        
+        if len(filtered_df["item_id"].unique()) < 5:
+            raise ValueError("The number of unique item IDs is less than 5, which is insufficient for analysis.")
+        
+        return filtered_df
     def _fill_missing_date(self, df: pd.DataFrame) -> pd.DataFrame:
         """Fills missing dates with 0 cases in the provided DataFrame based on the selected frequency.
 
