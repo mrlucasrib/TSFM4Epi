@@ -3,8 +3,15 @@ set -o pipefail
 set -e
 echo "Script PID: $$"
 
-local_artifacts="~/artifacts"
-mkdir -p ${local_artifacts}
+if [ -z "${local_artifacts}" ]; then
+    local_artifacts="~/artifacts"
+    mkdir -p ${local_artifacts}
+fi
+if [ -z "${data_path}" ]; then
+    local_artifacts="~/data"
+    mkdir -p ${local_artifacts}
+fi
+
 
 # List of parquet files
 files=(
@@ -66,7 +73,7 @@ for model_key in "${model_keys[@]}"; do
             # Loop through each file
             for file in "${files[@]}"; do
                 echo "Processing $file with $model_key (context_length=$context_length, prediction_length=$prediction_length)..."
-                docker run --gpus all -v ~/data:/data -v ${local_artifacts}:/artifacts -e LOG_LEVEL='INFO' ${model_name} \
+                docker run --gpus all -v ${data_path}:/data -v ${local_artifacts}:/artifacts -e LOG_LEVEL='INFO' ${model_name} \
                     --experiment_name "${file}" \
                     --artifacts_path "/artifacts" \
                     --prediction_length "$prediction_length" \
