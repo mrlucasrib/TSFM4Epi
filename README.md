@@ -54,3 +54,8 @@ The CSV file with the results will be in the artifacts folder. You can use the `
 ### Run Outside Docker
 
 We do not recommend this, so we do not explicitly explain how to do it. However, you can read the Dockerfiles and figure it out on your own.
+
+### Using Dev Containers
+
+You can also use dev containers to replicate the development environment and make changes. Dev containers provide a consistent and isolated environment for development, ensuring that all dependencies and tools are available. Refer to the `.devcontainer` folder for configuration details.
+
