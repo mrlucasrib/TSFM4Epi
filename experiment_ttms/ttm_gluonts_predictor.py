@@ -3,6 +3,7 @@
 # with minor modifications
 
 """Tools for building TTM Predictor that works with GluonTS datasets"""
+import logging
 import numpy as np
 import pandas as pd
 import torch
@@ -16,7 +17,7 @@ from tsfm_public.toolkit.get_model import get_model
 
 # TTM Constants
 TTM_MAX_FORECAST_HORIZON = 720
-
+logger = logging.getLogger(__file__)
 
 def impute_series(target):
     if np.isnan(target).any():
@@ -34,15 +35,12 @@ def impute_series(target):
 
 
 class TTMGluonTSPredictor(Predictor):
-    # TODO: crop predction_length to args.prediction_length
-
     """Wrapper to TTM that can be directly trained, validated, and tested with GluonTS datasets."""
 
     def __init__(
         self,
         context_length: int,
         prediction_length: int,
-        trim_prediction_length: int,
         model_path: str = "ibm-granite/granite-timeseries-ttm-r2",
         random_seed: int = 42,
         **kwargs,
@@ -57,7 +55,6 @@ class TTMGluonTSPredictor(Predictor):
         self.context_length = context_length
         self.prediction_length = prediction_length
         self.random_seed = random_seed
-        self.trim_prediction_length = trim_prediction_length
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
         if "dropout" in kwargs and kwargs["dropout"] is None:
             del kwargs["dropout"]
@@ -86,10 +83,10 @@ class TTMGluonTSPredictor(Predictor):
             try:
                 # Generate forecast samples
                 forecast_samples = []
-                for batch in tqdm(batcher(dataset, batch_size=batch_size)):
+                for batch in batcher(dataset, batch_size=batch_size):
                     batch_ttm = {}
                     adjusted_batch_raw = []
-                    for idx, entry in enumerate(batch):
+                    for entry in batch:
                         # univariate array of shape (time,)
                         # multivariate array of shape (var, time)
                         # TTM supports multivariate time series
@@ -132,6 +129,7 @@ class TTMGluonTSPredictor(Predictor):
                     )
                     # This statment won't ever be true in experiment settings
                     if self.prediction_length > TTM_MAX_FORECAST_HORIZON:
+                        logger.error("It should not happen")
                         recursive_steps = int(
                             np.ceil(
                                 self.prediction_length
@@ -158,12 +156,13 @@ class TTMGluonTSPredictor(Predictor):
                                     ],
                                     dim=1,
                                 )
-                        predict_outputs = predict_outputs[
-                            :, : self.prediction_length, :
-                        ]
                     else:
                         model_outputs = self.ttm(**batch_ttm)
                         predict_outputs = model_outputs.prediction_outputs
+                    # Trim prediction length to the desired length for experiment
+                    predict_outputs = predict_outputs[
+                        :, : self.prediction_length, :
+                    ]
                     # Accumulate all forecasts
                     forecast_samples.append(predict_outputs.detach().cpu().numpy())
                 # list to np.ndarray
@@ -181,15 +180,11 @@ class TTMGluonTSPredictor(Predictor):
         #   (num_samples, prediction_length, target_dim) (multivariate case)
         sample_forecasts: list[SampleForecast] = []
         for item, ts in zip(forecast_samples, dataset):
-            forecast_start_date = ts["start"] + len(ts["target"])
             sample_forecasts.append(
                 SampleForecast(
                     item_id=ts["item_id"],
-                    # Changed to trim the prediction length to the desired length for experiment
-                    samples=np.expand_dims(item, axis=0)[
-                        :, : self.trim_prediction_length
-                    ],
-                    start_date=forecast_start_date,
+                    samples=np.expand_dims(item, axis=0),
+                    start_date=ts["start"] + len(ts["target"]),
                 )
             )
         return iter(sample_forecasts)

@@ -3,17 +3,16 @@ from __future__ import annotations
 import logging
 import os
 from pathlib import Path
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import mlflow
 import mlflow.client
 import mlflow.experiments
-from gluonts.evaluation import Evaluator
-from gluonts.evaluation.backtest import _to_dataframe
 from gluonts.dataset.common import FileDataset
-
+from gluonts.model.evaluation import evaluate_forecasts
+from gluonts.ev.metrics import MASE, MeanWeightedSumQuantileLoss, MSIS, NRMSE
 from utils_exp.splitter import TSFMExperimentSplitter
-
+import numpy as np
 if TYPE_CHECKING:
     from collections.abc import Iterator
 
@@ -54,6 +53,7 @@ class MLExperimentFacade:
     def run_experiment(
         self, model_name: str, dataset_path, predictor: Predictor, num_samples: int
     ) -> None:
+        self.model_name = model_name
         mlflow.start_run(run_name=model_name, experiment_id=self.experiment_id)
         logger.info(f"Starting experiment {model_name}")
         mlflow.log_params(self.__dict__)
@@ -65,22 +65,17 @@ class MLExperimentFacade:
             }
         )
 
-        data = self.get_data(dataset_path)
+        dataset = self.get_data(dataset_path)
         logger.info(f"Data loaded from {dataset_path}")
-
-        agg_metrics, item_metrics = self.backtest_metrics(
-            data, predictor, num_samples=num_samples
+        forecast_it, ts_it = self.make_evaluation_predictions(
+            predictor=predictor, dataset=dataset, num_samples=num_samples
         )
+        forecast = list(forecast_it)
+        metrics_disease = self._evaluate(forecast, ts_it, model_name, self.experiment_name, self.context_length, self.prediction_length, axis=None)
+        metrics_all = self._evaluate(forecast, ts_it, model_name, self.experiment_name, self.context_length, self.prediction_length,  axis=1)
         logger.info(f"Metrics calculated")
-        for metric_name, metric_value in agg_metrics.items():
-            sanitized_metric_name = metric_name.replace("[", "_").replace("]", "_")
-            mlflow.log_metric(sanitized_metric_name, metric_value)
-        self.save_metrics(agg_metrics, f"{self.artifacts_path}/metrics.csv", model_name)
-        logger.info(f"Metrics logged")
-
-        item_metrics_path = f"{self.artifacts_path}/item_metrics.csv"
-        item_metrics.to_csv(item_metrics_path, index=False)
-        mlflow.log_artifact(item_metrics_path)
+        mlflow.log_artifact(metrics_disease)
+        mlflow.log_artifact(metrics_all)
         mlflow.end_run()
 
     def get_data(self, path: str) -> Dataset:
@@ -89,57 +84,13 @@ class MLExperimentFacade:
             freq="M"
         )
 
-    def backtest_metrics(
-        self,
-        dataset: Dataset,
-        predictor: Predictor,
-        evaluator=Evaluator(quantiles=(0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9)),
-        num_samples: int = 100,
-    ) -> tuple[dict[str, float], DataFrame]:
-        """
-        Calculate metrics for a predictor.
-
-        This method was implemented because the default method in the GluonTS library assumes splitters that do not meet the requirements of this evaluation.
-
-        Parameters
-        ----------
-        dataset
-            Dataset to use for testing.
-        predictor
-            The predictor to test.
-        evaluator
-            Evaluator to use.
-        num_samples
-            Number of samples to use when generating sample-based forecasts. Only
-            sampling-based models will use this.
-
-        Returns
-        -------
-        A tuple of aggregate metrics and metrics per time series split.
-        """
-        forecast_it, ts_it = self.make_evaluation_predictions(
-            predictor=predictor, dataset=dataset, num_samples=num_samples
-        )
-        # Calculate time taken to make forecast
-        start_time = time.time()
-        forecast = list(forecast_it)
-        end_time = time.time()
-        logger.info(
-            f"Time taken to transform to list of size {len(forecast)}: {end_time - start_time} seconds"
-        )
-        mlflow.log_metric("time_to_transform_forecast", end_time - start_time)
-        mlflow.log_metric("forecast_size", len(forecast))
-
-        agg_metrics, item_metrics = evaluator(ts_it, forecast)
-        return agg_metrics, item_metrics
-
     def make_evaluation_predictions(
         self,
         predictor: Predictor,
         dataset: Dataset,
         num_samples: int,
         distance: int | None = None,
-    ) -> tuple[Iterator[Forecast], Iterator[DataFrame]]:
+    ) -> tuple[Iterator[Forecast], Any]:
         """
         Generate forecasts and time series from a dataset.
 
@@ -167,30 +118,36 @@ class MLExperimentFacade:
         )
         return (
             predictor.predict(test_data.input, num_samples=num_samples),
-            map(_to_dataframe, test_data),
+            test_data,
         )
 
-    def save_metrics(self, metrics: dict[str, float], path: str, model_name: str) -> None:
-        """
-        Save metrics to a CSV file using built-in Python libraries.
-
-        Parameters
-        ----------
-        metrics : dict
-            Dictionary containing metrics to save
-        path : str
-            Path where to save the CSV file
-        model_name : str
-            Name of the model used
-        """
-        
-        # Check if file exists
-        file_exists = os.path.exists(path)
-        
-        with open(path, 'a') as f:
-            # Write header only if file doesn't exist
-            if not file_exists:
-                f.write('experiment_name,model_name,input_size,prediction_size,metric,value\n')
-            for metric, value in metrics.items():
-                sanitized_metric = metric.replace("[", "_").replace("]", "_")
-                f.write(f'{self.experiment_name},{model_name},{self.context_length},{self.prediction_length},{sanitized_metric},{value}\n')
+    def _evaluate(self, forecasts, ts, model_name: str, disease_code: str, contex_length: int, prediction_length: int, axis=None) -> str:
+        result_rows = []
+        logger.info(f"Evaluating forecasts")
+        metrics = (
+            evaluate_forecasts(
+                forecasts,
+                test_data=ts,
+                metrics=[
+                    MASE(),
+                    MeanWeightedSumQuantileLoss(np.arange(0.1, 1.0, 0.1)),
+                    MSIS(),
+                    NRMSE(forecast_type="0.5"),
+                ],
+                axis=axis,
+            )
+        )
+        metrics["Model"] = model_name
+        metrics["Disease"] = disease_code
+        metrics["Context"] = contex_length
+        metrics["Prediction"] = prediction_length
+        metrics = metrics.rename(
+                columns={"MASE[0.5]": "MASE", "mean_weighted_sum_quantile_loss": "CPRS", "NRMSE[0.5]": "NRMSE"}
+        )
+        if axis is not None:
+            metrics.reset_index(inplace=True)
+            metrics.rename(columns={"level_0": "item_id", "level_1": "forecast_start"}, inplace=True)
+        sufix = "agg" if axis is None else "per_window"
+        path = f"{self.artifacts_path}/metric_{sufix}.csv"
+        metrics.to_csv(path, mode='a', index=False, header=not os.path.exists(path))
+        return path

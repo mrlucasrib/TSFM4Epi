@@ -1,8 +1,10 @@
 import logging
+import os
 
-from experiment_ttms.ttm_gluonts_predictor import TTMGluonTSPredictor
 from utils_exp import Args, MLExperimentFacade, get_parser
+from nixtla import NixtlaClient
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__package__)
 
 
@@ -11,15 +13,13 @@ def main():
     parser = get_parser()
     args = parser.parse_args(namespace=Args)
 
-    logger.info("Creating TTM GluonTS predictor")
-    logger.warning(
-        "The TTM model requires at least 512 context length and 96 prediction length. The padding will be done automatically."
-    )
-    ttm_predictor = TTMGluonTSPredictor(
-        context_length=args.context_length,
-        prediction_length=args.prediction_length,
-        model_path=f"/models/{args.model_path}",
-    )
+    # defaults to 
+    if os.environ.get("NIXTLA_API_KEY") is None:
+        raise ValueError("NIXTLA_API_KEY must be set in the environment")
+    nixtla_client = NixtlaClient()
+
+    nixtla_client.cross_validation
+    #TODO: WIP
     exp = MLExperimentFacade(
         experiment_name=args.experiment_name,
         artifacts_path=args.artifacts_path,

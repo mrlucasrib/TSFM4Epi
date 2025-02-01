@@ -16,8 +16,11 @@
 	// Features to add to the dev container. More info: https://containers.dev/features.
 	"features": {
 		"ghcr.io/devcontainers/features/git:1": [],
-		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {}
+		"ghcr.io/devcontainers/features/docker-outside-of-docker:1": {},
 	},
+	"mounts": [
+		"source=/home/${localEnv:USER},target=/home/${localEnv:USER},type=bind"
+	],
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	// "forwardPorts": [],
 	// Configure tool-specific properties.
@@ -25,7 +28,8 @@
 		"vscode": {
 			"extensions": [
 				"ms-python.python",
-				"ms-python.debugpy"
+				"ms-python.debugpy",
+				"ms-toolsai.jupyter"
 			]
 		}
 	},

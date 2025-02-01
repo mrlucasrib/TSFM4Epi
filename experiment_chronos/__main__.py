@@ -2,7 +2,9 @@
 # with minor modifications
 import logging
 from dataclasses import dataclass, field
+from typing import Iterator
 
+from gluonts.model.predictor import RepresentablePredictor
 import numpy as np
 import torch
 from chronos import BaseChronosPipeline, ForecastType
@@ -16,7 +18,7 @@ from utils_exp import Args, MLExperimentFacade, get_parser
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__package__)
 
-class ChronosPredictor:
+class ChronosPredictor(RepresentablePredictor):
     def __init__(
         self,
         model_path,
@@ -26,7 +28,7 @@ class ChronosPredictor:
         **kwargs,
     ):
         self.pipeline = BaseChronosPipeline.from_pretrained(
-            model_path,
+            f"/models/{model_path}",
             *args,
             **kwargs,
         )
@@ -34,8 +36,8 @@ class ChronosPredictor:
         self.num_samples = num_samples
 
     def predict(
-        self, test_data_input, batch_size: int = 1024, **kwargs
-    ) -> list[Forecast]:
+        self, dataset, batch_size: int = 1024, **kwargs
+    ) -> Iterator[Forecast]:
         pipeline = self.pipeline
         predict_kwargs = (
             {"num_samples": self.num_samples}
@@ -46,7 +48,7 @@ class ChronosPredictor:
             try:
                 # Generate forecast samples
                 forecast_outputs = []
-                for batch in tqdm(batcher(test_data_input, batch_size=batch_size)):
+                for batch in batcher(dataset, batch_size=batch_size):
                     context = [torch.tensor(entry["target"]) for entry in batch]
                     forecast_outputs.append(
                         pipeline.predict(
@@ -65,23 +67,22 @@ class ChronosPredictor:
 
         # Convert forecast samples into gluonts Forecast objects
         forecasts = []
-        for item, ts in zip(forecast_outputs, test_data_input):
-            forecast_start_date = ts["start"] + len(ts["target"])
-
+        for item, ts in zip(forecast_outputs, dataset):
             if pipeline.forecast_type == ForecastType.SAMPLES:
                 forecasts.append(
-                    SampleForecast(samples=item, start_date=forecast_start_date)
+                    SampleForecast(samples=item, start_date=ts["start"] + len(ts["target"]), item_id=ts["item_id"])
                 )
             elif pipeline.forecast_type == ForecastType.QUANTILES:
                 forecasts.append(
                     QuantileForecast(
                         forecast_arrays=item,
                         forecast_keys=list(map(str, pipeline.quantiles)),
-                        start_date=forecast_start_date,
+                        start_date=ts["start"] + len(ts["target"]),
+                        item_id=ts["item_id"],
                     )
                 )
 
-        return forecasts
+        return iter(forecasts)
 
 
 def main():
@@ -111,3 +112,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
