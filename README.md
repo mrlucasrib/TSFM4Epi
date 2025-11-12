@@ -1,6 +1,28 @@
 # Paper Code
 
-This repository contains the implementation of the experiments for Time Series Foundation Models (TSFM) as described in the associated research paper. It includes all necessary scripts and dependencies to replicate the experiments and evaluate the models.
+This repository contains the implementation of the experiments for the paper "**How Effective Are Time Series Foundation Models for Epidemiological Data Analysis?**" published on _IEEE-EMBS International Conference on Biomedical and Health Informatics 2025_ proceedings. It includes all necessary scripts and dependencies to replicate the experiments and evaluate the models.
+
+# Citation
+
+Please cite this paper if you found our work useful.
+
+BibTex:
+
+```bibtex
+@inproceedings{ribeiro2025how,
+title={How Effective Are Time Series Foundation Models for Epidemiological Data Analysis?},
+author={Lucas Moreira Ribeiro and Eduardo Luz and Jadson Castro Gertrudes},
+booktitle={IEEE-EMBS International Conference on Biomedical and Health Informatics 2025},
+year={2025},
+url={https://openreview.net/forum?id=rIfSW4pWtt}
+}
+```
+IEEE Citation format:
+
+```
+[1] L. M. Ribeiro, E. Luz, and J. C. Gertrudes, “How Effective Are Time Series Foundation Models for Epidemiological Data Analysis?,” presented at the IEEE-EMBS International Conference on Biomedical and Health Informatics 2025, Oct 2025, pp. 1–7.
+
+```
 
 # Overall Structure
 
