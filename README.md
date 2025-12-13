@@ -9,18 +9,21 @@ Please cite this paper if you found our work useful.
 BibTex:
 
 ```bibtex
-@inproceedings{ribeiro2025how,
-title={How Effective Are Time Series Foundation Models for Epidemiological Data Analysis?},
-author={Lucas Moreira Ribeiro and Eduardo Luz and Jadson Castro Gertrudes},
-booktitle={IEEE-EMBS International Conference on Biomedical and Health Informatics 2025},
-year={2025},
-url={https://openreview.net/forum?id=rIfSW4pWtt}
-}
+@INPROCEEDINGS{11269524,
+  author={Ribeiro, Lucas Moreira and da Silva Luz, Eduardo Jose and Gertrudes, Jadson Castro},
+  booktitle={2025 IEEE EMBS International Conference on Biomedical and Health Informatics (BHI)}, 
+  title={How Effective Are Time Series Foundation Models for Epidemiological Data Analysis?}, 
+  year={2025},
+  volume={},
+  number={},
+  pages={1-7},
+  keywords={Measurement;Foundation models;Time series analysis;Training data;Predictive models;Benchmark testing;Data models;Forecasting;Public healthcare;Diseases;Epidemiology;Evaluation models;Public health;Time Series Foundation Models (TSFM)},
+  doi={10.1109/BHI67747.2025.11269524}}
 ```
 IEEE Citation format:
 
 ```
-[1] L. M. Ribeiro, E. Luz, and J. C. Gertrudes, “How Effective Are Time Series Foundation Models for Epidemiological Data Analysis?,” presented at the IEEE-EMBS International Conference on Biomedical and Health Informatics 2025, Oct 2025, pp. 1–7.
+L. M. Ribeiro, E. J. da Silva Luz and J. C. Gertrudes, "How Effective Are Time Series Foundation Models for Epidemiological Data Analysis?," 2025 IEEE EMBS International Conference on Biomedical and Health Informatics (BHI), Atlanta, GA, USA, 2025, pp. 1-7, doi: 10.1109/BHI67747.2025.11269524.
 
 ```
 
