@@ -13,6 +13,7 @@ authors:
     given-names: Jadson Castro
     orcid: https://orcid.org/0000-0002-0861-6681
 url: https://ieeexplore.ieee.org/document/11269524
+doi: 10.1109/BHI67747.2025.11269524
 repository-code: https://github.com/mrlucasrib/TSFM4Epi
 date-released: 2025-10
 keywords:
@@ -35,7 +36,7 @@ preferred-citation:
     - family-names: Gertrudes
       given-names: Jadson Castro
       orcid: https://orcid.org/0000-0002-0861-6681
-  booktitle: "2025 IEEE EMBS International Conference on Biomedical and Health Informatics (BHI)"
+  journal: "2025 IEEE EMBS International Conference on Biomedical and Health Informatics (BHI)"
   address: "Atlanta, GA, USA"
   year: 2025
   month: 10
@@ -43,4 +44,3 @@ preferred-citation:
   start: 1
   end: 7
   doi: 10.1109/BHI67747.2025.11269524
-  url: https://ieeexplore.ieee.org/document/11269524
