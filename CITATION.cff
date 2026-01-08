@@ -36,11 +36,10 @@ preferred-citation:
       given-names: Jadson Castro
       orcid: https://orcid.org/0000-0002-0861-6681
   booktitle: "2025 IEEE EMBS International Conference on Biomedical and Health Informatics (BHI)"
-    dates: "2025-10-26/2025-10-29"
   address: "Atlanta, GA, USA"
   year: 2025
   month: 10
-  ISSN: 2641-3604
+  issn: 2641-3604
   start: 1
   end: 7
   doi: 10.1109/BHI67747.2025.11269524
