@@ -1,0 +1,46 @@
+cff-version: 1.2.0
+message: "If you use this work or the accompanying code, please cite it as follows."
+type: conference-paper
+title: "How Effective Are Time Series Foundation Models for Epidemiological Data Analysis?"
+authors:
+  - family-names: Ribeiro
+    given-names: Lucas Moreira
+    orcid: https://orcid.org/0000-0003-0967-2279
+  - family-names: da Silva Luz
+    given-names: Eduardo Jose
+    orcid: https://orcid.org/0000-0001-5249-1559
+  - family-names: Gertrudes
+    given-names: Jadson Castro
+    orcid: https://orcid.org/0000-0002-0861-6681
+conference:
+  name: "2025 IEEE EMBS International Conference on Biomedical and Health Informatics (BHI)"
+  dates: "2025-10-26/2025-10-29"
+year: 2025
+start-page: 1
+end-page: 7
+doi: 10.1109/BHI67747.2025.11269524
+url: https://ieeexplore.ieee.org/document/11269524
+repository-code: https://github.com/<YOUR_USERNAME>/<YOUR_REPOSITORY>
+keywords:
+  - Time Series Foundation Models (TSFM)
+  - Time series analysis
+  - Epidemiology
+  - Public health
+  - Forecasting
+  - Benchmark testing
+  - Predictive models
+  - Public healthcare
+abstract: >
+  Understanding the capabilities and limitations of modern time series models is essential
+  for their effective use in domain-specific contexts. This study investigates the zero-shot
+  forecasting performance of state-of-the-art Time Series Foundation Models (TSFMs) using
+  real-world epidemiological data. Guided by a central hypothesis and three research questions,
+  we benchmark several TSFMs, including TimesFM, ChronosT5Base, and Moirai variants, on monthly
+  time series of notifiable diseases in Brazil, considering different forecast horizons and
+  context lengths. Through robust evaluation using MASE and CRPS metrics, along with statistical
+  significance testing, we find that TimesFM and ChronosT5Base consistently outperform classical
+  statistical baselines, while others demonstrate architectural limitations. These findings
+  contribute to a deeper methodological understanding of TSFMs in health-related forecasting
+  scenarios and suggest that performance differences may arise from model design and training
+  data characteristics. The results provide valuable insights to guide future model development
+  and support more informed use of forecasting tools in public health decision-making.
