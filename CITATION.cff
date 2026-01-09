@@ -22,6 +22,11 @@ keywords:
   - Forecasting
   - Public health
   - Time series analysis
+identifiers:
+  - type: issn
+    value: 2641-3604
+  - type: doi
+    value: 10.1109/BHI67747.2025.11269524
 
 preferred-citation:
   type: conference-paper
@@ -36,11 +41,22 @@ preferred-citation:
     - family-names: Gertrudes
       given-names: Jadson Castro
       orcid: https://orcid.org/0000-0002-0861-6681
-  journal: "2025 IEEE EMBS International Conference on Biomedical and Health Informatics (BHI)"
-  address: "Atlanta, GA, USA"
-  year: 2025
-  month: 10
-  issn: 2641-3604
+  doi: 10.1109/BHI67747.2025.11269524
+
+  collection-title: "Proceedings of the 2025 IEEE EMBS International Conference on Biomedical and Health Informatics (BHI)"
+
+  conference:
+    name: "2025 IEEE EMBS International Conference on Biomedical and Health Informatics (BHI)"
+    city: "Atlanta"
+    region: "GA"
+    country: "USA"
+    date-start: 2025-10-26
+    date-end: 2025-10-29
+
+  publisher:
+    name: "IEEE"
+
   start: 1
   end: 7
-  doi: 10.1109/BHI67747.2025.11269524
+  year: 2025
+  month: 10
